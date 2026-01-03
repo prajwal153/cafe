@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Arena 53 - Waiter</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #888;
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --border: #2a2a2a;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 160px;
+        }
+
+        .header {
+            background: var(--card-bg);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .table-badge {
+            background: var(--accent);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .table-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 16px;
+        }
+
+        .table-btn {
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .table-btn.active {
+            border-color: var(--accent);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .category-tabs {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .category-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .cat-tab {
+            flex-shrink: 0;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .cat-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 16px;
+        }
+
+        .menu-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .menu-item:active {
+            transform: scale(0.97);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .menu-item .name {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+
+        .menu-item .price {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .order-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            padding: 16px;
+            z-index: 100;
+        }
+
+        .order-summary {
+            max-height: 120px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .order-item .qty-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .qty-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-primary);
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .qty-btn.remove {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .order-total {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .send-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .send-btn:disabled {
+            background: var(--border);
+            cursor: not-allowed;
+        }
+
+        .empty-order {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        .pizza-size-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .pizza-size-modal.show {
+            display: flex;
+        }
+
+        .pizza-size-content {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 16px;
+            text-align: center;
+            min-width: 280px;
+        }
+
+        .pizza-size-content h3 {
+            margin-bottom: 16px;
+        }
+
+        .size-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .size-btn {
+            padding: 14px 24px;
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .size-btn:active {
+            border-color: var(--accent);
+        }
+
+        .success-toast {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--accent);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            z-index: 300;
+        }
+
+        .success-toast.show {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🍽️ Waiter</h1>
+        <div class="table-badge" id="currentTable">Table 1</div>
+    </div>
+
+    <div class="table-selector" id="tableSelector">
+        <button class="table-btn active" onclick="selectTable(1, this)">Table 1</button>
+        <button class="table-btn" onclick="selectTable(2, this)">Table 2</button>
+        <button class="table-btn" onclick="selectTable(3, this)">Table 3</button>
+        <button class="table-btn" onclick="selectTable(4, this)">Table 4</button>
+        <button class="table-btn" onclick="selectTable(5, this)">Table 5</button>
+        <button class="table-btn" onclick="selectTable(6, this)">Table 6</button>
+    </div>
+
+    <div class="category-tabs" id="categoryTabs">
+        <button class="cat-tab active" onclick="selectCategory('mojitos', this)">🍹 Mojitos</button>
+        <button class="cat-tab" onclick="selectCategory('cold-coffee', this)">☕ Cold Coffee</button>
+        <button class="cat-tab" onclick="selectCategory('smoothies', this)">🥤 Smoothies</button>
+        <button class="cat-tab" onclick="selectCategory('fresh-juice', this)">🍊 Juice</button>
+        <button class="cat-tab" onclick="selectCategory('ice-creams', this)">🍨 Ice Cream</button>
+        <button class="cat-tab" onclick="selectCategory('barista', this)">☕ Barista</button>
+        <button class="cat-tab" onclick="selectCategory('tea', this)">🍵 Tea</button>
+        <button class="cat-tab" onclick="selectCategory('desserts', this)">🧁 Desserts</button>
+        <button class="cat-tab" onclick="selectCategory('soups', this)">🍜 Soups</button>
+        <button class="cat-tab" onclick="selectCategory('starters-veg', this)">🥗 Starters Veg</button>
+        <button class="cat-tab" onclick="selectCategory('starters-nonveg', this)">🍗 Starters Non-Veg</button>
+        <button class="cat-tab" onclick="selectCategory('quick-bites', this)">🍟 Quick Bites</button>
+        <button class="cat-tab" onclick="selectCategory('momos', this)">🥟 Momos</button>
+        <button class="cat-tab" onclick="selectCategory('rice-noodles', this)">🍚 Rice & Noodles</button>
+        <button class="cat-tab" onclick="selectCategory('burgers', this)">🍔 Burgers</button>
+        <button class="cat-tab" onclick="selectCategory('sandwiches', this)">🥪 Sandwiches</button>
+        <button class="cat-tab" onclick="selectCategory('pasta', this)">🍝 Pasta</button>
+        <button class="cat-tab" onclick="selectCategory('pizzas', this)">🍕 Pizzas</button>
+    </div>
+
+    <div class="menu-grid" id="menuGrid"></div>
+
+    <div class="order-panel">
+        <div class="order-summary" id="orderSummary">
+            <div class="empty-order">Tap items to add to order</div>
+        </div>
+        <div class="order-total">
+            <span>Total</span>
+            <span id="orderTotal">₹0</span>
+        </div>
+        <button class="send-btn" id="sendBtn" onclick="sendOrder()" disabled>Send to Kitchen</button>
+    </div>
+
+    <!-- Pizza Size Modal -->
+    <div class="pizza-size-modal" id="pizzaSizeModal">
+        <div class="pizza-size-content">
+            <h3 id="pizzaName">Select Size</h3>
+            <div class="size-buttons">
+                <button class="size-btn" onclick="addPizza(8)">8" Regular<br>₹<span id="price8">0</span></button>
+                <button class="size-btn" onclick="addPizza(10)">10" Large<br>₹<span id="price10">0</span></button>
+            </div>
+            <button
+                style="margin-top: 16px; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
+                onclick="closePizzaModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="success-toast" id="successToast">✓ Order Sent!</div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCmzxw8bNTQgj1xawz2qdnr-fHStYK_cHs",
+            authDomain: "cafe-87ecd.firebaseapp.com",
+            projectId: "cafe-87ecd",
+            storageBucket: "cafe-87ecd.firebasestorage.app",
+            messagingSenderId: "1066582065338",
+            appId: "1:1066582065338:web:1c20958000c6f1d0d30283"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Menu Data (same as cafe.html)
+        const menu = {
+            mojitos: {
+                'Lemon Mojito': 100, 'Green Apple Mojito': 100, 'Lime Soda': 90, 'Virgin Mojito': 90,
+                'Cranberry Mojito': 100, 'Raspberry Mojito': 110, 'Orange Punch Mojito': 100,
+                'Blue Berry Mojito': 110, 'Watermelon Mojito': 90, 'Pineapple Mojito': 90
+            },
+            'cold-coffee': { 'Coffee': 80, 'Iced Coffee': 120, 'Cafe Frappe': 130, 'Iced Americano': 140, 'Caramel Frappe': 140, 'Oreo Frappe': 160 },
+            'ice-creams': { 'Vanilla': 80, 'Mango': 100, 'Chocolate': 110, 'Butterscotch': 120 },
+            barista: { 'Cappuccino': 130, 'Caramel Latte': 160, 'Espresso': 110, 'Cafe Americano': 120, 'Cafe Latte': 150 },
+            tea: { 'Tea': 70, 'Ginger Lemon Tea': 80, 'Green Tea': 70, 'Hot Lemon Tea': 70, 'Iced Tea': 110, 'Black Tea': 80, 'Black Ginger Tea': 90 },
+            smoothies: {
+                'Vanilla Milk Smoothie': 110, 'Mango Milk Smoothie': 120, 'Chocolate Milk Smoothie': 120,
+                'Butterscotch Smoothie': 130, 'Green Apple Smoothie': 110, 'Blueberry Smoothie': 100,
+                'Strawberry Smoothie': 110, 'Oreo Smoothie': 140
+            },
+            desserts: { 'Cupcakes': 60, 'Brownie': 120, 'Cheesecake': 170, 'Water Bottle 500mL': 20 },
+            'fresh-juice': { 'Watermelon Juice': 100, 'Pineapple Juice': 110, 'Orange Juice': 130, 'Muskmelon Juice': 100 },
+            soups: { 'Manchow Soup': 110, 'Hot & Sour Soup': 125, 'Clear Soup': 150, 'Tom Yum Soup': 120 },
+            'starters-veg': {
+                'Mushroom Chilly': 180, 'Burnt Pepper Mushroom': 190, 'Baby Corn Manchurian': 200,
+                'Thai Chilly Baby Corn': 210, 'Paneer Manchurian': 220, 'Paneer Chilly': 230, 'Oyster Paneer': 225
+            },
+            'quick-bites': {
+                'French Fries': 120, 'Peri Peri Fries': 135, 'Cheese Fries': 160, 'Cheese Ball': 140,
+                'Chicken Nuggets': 150, 'Chicken Strips': 170, 'Veg Popcorn': 145, 'Chicken Popcorn': 180,
+                'Cheese Garlic Bread': 165, 'Veg Nachos': 145, 'Chicken Nachos': 175
+            },
+            momos: { 'Veg Momos': 120, 'Chicken Momos': 150, 'Veg Fried Momos': 140, 'Chicken Fried Momos': 170 },
+            'starters-nonveg': {
+                'Chicken Lollipop': 220, 'Crispy Chicken Wings': 190, 'Dragon Chicken': 250,
+                'Kung Pao Chicken': 225, 'Chicken Manchurian': 210, 'Burnt Garlic Chicken': 200,
+                'Lemon Basil Chicken': 230, 'Thai Fried Chicken': 220
+            },
+            'rice-noodles': {
+                'Veg Fried Rice': 140, 'Chicken Fried Rice': 165, 'Veg Schezwan Rice': 150,
+                'Chicken Schezwan Rice': 170, 'Veg Egg Noodles': 150, 'Chicken Noodles': 180
+            },
+            burgers: {
+                'Veg BBQ Burger': 150, 'Crispy Chicken BBQ Burger': 180, 'Paneer Tandoori Burger': 170,
+                'Veg American Burger': 160, 'Chicken American Burger': 175
+            },
+            sandwiches: {
+                'Veg Club Sandwich': 120, 'Chicken Club Sandwich': 160, 'Paneer Sandwich': 155,
+                'Tandoori Chicken Sandwich': 170, 'Egg Veg Sandwich': 135, 'Egg Chicken Sandwich': 180
+            },
+            pasta: {
+                'Veg White Sauce Pasta': 210, 'Chicken White Sauce Pasta': 240,
+                'Veg Red Sauce Pasta': 215, 'Chicken Red Sauce Pasta': 250
+            },
+            pizzas: {
+                'Margherita Pizza': { 8: 180, 10: 210 }, 'Corn Pizza': { 8: 190, 10: 215 },
+                'Mushroom Cheese Pizza': { 8: 200, 10: 225 }, 'Plain Cheese Pizza': { 8: 175, 10: 205 },
+                'Paneer Tikka Pizza': { 8: 210, 10: 240 }, 'Chicken Tikka Pizza': { 8: 220, 10: 250 },
+                'Double Cheese Pizza': { 8: 220, 10: 260 }, 'BBQ Chicken Pizza': { 8: 225, 10: 265 }
+            }
+        };
+
+        let currentTable = 1;
+        let currentCategory = 'mojitos';
+        let order = [];
+        let selectedPizza = null;
+
+        function selectTable(num, btn) {
+            currentTable = num;
+            document.querySelectorAll('.table-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('currentTable').textContent = `Table ${num}`;
+        }
+
+        function selectCategory(cat, btn) {
+            currentCategory = cat;
+            document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderMenu();
+        }
+
+        function renderMenu() {
+            const grid = document.getElementById('menuGrid');
+            const items = menu[currentCategory];
+            let html = '';
+            for (let name in items) {
+                const data = items[name];
+                if (typeof data === 'object') {
+                    // Pizza with sizes
+                    html += `<div class="menu-item" onclick="showPizzaModal('${name.replace(/'/g, "\\'")}')">
+            <div class="name">${name}</div>
+            <div class="price">₹${data[8]} - ₹${data[10]}</div>
+          </div>`;
+                } else {
+                    html += `<div class="menu-item" onclick="addItem('${name.replace(/'/g, "\\'")}', ${data})">
+            <div class="name">${name}</div>
+            <div class="price">₹${data}</div>
+          </div>`;
+                }
+            }
+            grid.innerHTML = html;
+        }
+
+        function addItem(name, price) {
+            const existing = order.find(o => o.name === name);
+            if (existing) {
+                existing.qty++;
+            } else {
+                order.push({ name, price, qty: 1, category: currentCategory });
+            }
+            renderOrder();
+        }
+
+        function showPizzaModal(name) {
+            selectedPizza = name;
+            const data = menu.pizzas[name];
+            document.getElementById('pizzaName').textContent = name;
+            document.getElementById('price8').textContent = data[8];
+            document.getElementById('price10').textContent = data[10];
+            document.getElementById('pizzaSizeModal').classList.add('show');
+        }
+
+        function closePizzaModal() {
+            document.getElementById('pizzaSizeModal').classList.remove('show');
+            selectedPizza = null;
+        }
+
+        function addPizza(size) {
+            const name = `${selectedPizza} ${size}"`;
+            const price = menu.pizzas[selectedPizza][size];
+            addItem(name, price);
+            closePizzaModal();
+        }
+
+        function adjustQty(index, delta) {
+            order[index].qty += delta;
+            if (order[index].qty <= 0) {
+                order.splice(index, 1);
+            }
+            renderOrder();
+        }
+
+        function renderOrder() {
+            const container = document.getElementById('orderSummary');
+            const btn = document.getElementById('sendBtn');
+
+            if (order.length === 0) {
+                container.innerHTML = '<div class="empty-order">Tap items to add to order</div>';
+                document.getElementById('orderTotal').textContent = '₹0';
+                btn.disabled = true;
+                return;
+            }
+
+            let total = 0;
+            let html = '';
+            order.forEach((item, idx) => {
+                const itemTotal = item.price * item.qty;
+                total += itemTotal;
+                html += `<div class="order-item">
+          <span>${item.name} × ${item.qty}</span>
+          <div class="qty-controls">
+            <button class="qty-btn ${item.qty === 1 ? 'remove' : ''}" onclick="adjustQty(${idx}, -1)">${item.qty === 1 ? '✕' : '−'}</button>
+            <button class="qty-btn" onclick="adjustQty(${idx}, 1)">+</button>
+            <span style="min-width: 50px; text-align: right;">₹${itemTotal}</span>
+          </div>
+        </div>`;
+            });
+            container.innerHTML = html;
+            document.getElementById('orderTotal').textContent = `₹${total}`;
+            btn.disabled = false;
+        }
+
+        async function sendOrder() {
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+
+            try {
+                await db.collection('orders').add({
+                    table: currentTable,
+                    items: order.map(o => ({ name: o.name, price: o.price, qty: o.qty, category: o.category })),
+                    status: 'pending',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Show success
+                const toast = document.getElementById('successToast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+
+                // Reset order
+                order = [];
+                renderOrder();
+            } catch (error) {
+                console.error('Error sending order:', error);
+                alert('Failed to send order. Please try again.');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Send to Kitchen';
+        }
+
+        // Initialize
+        renderMenu();
+    </script>
+</body>
+
+</html>
