@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Arena 53 - Waiter</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -114,6 +118,40 @@
             background: var(--accent);
             border-color: var(--accent);
             color: white;
+        }
+
+        /* Category Dropdown Selector */
+        .category-selector {
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .category-dropdown {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        .category-dropdown:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .category-dropdown option {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            padding: 10px;
         }
 
         .menu-grid {
@@ -303,38 +341,42 @@
 
 <body>
     <div class="header">
+        <a href="cafe.html" style="color: var(--text-secondary); text-decoration: none; font-size: 14px;">← Back</a>
         <h1>🍽️ Waiter</h1>
-        <div class="table-badge" id="currentTable">Table 1</div>
+        <div class="table-badge" id="currentTable" onclick="toggleTableSelector()">Walk-in ▼</div>
     </div>
 
     <div class="table-selector" id="tableSelector">
-        <button class="table-btn active" onclick="selectTable(1, this)">Table 1</button>
+        <button class="table-btn active" onclick="selectTable(0, this)"
+            style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">Walk-in</button>
+        <button class="table-btn" onclick="selectTable(1, this)">Table 1</button>
         <button class="table-btn" onclick="selectTable(2, this)">Table 2</button>
         <button class="table-btn" onclick="selectTable(3, this)">Table 3</button>
         <button class="table-btn" onclick="selectTable(4, this)">Table 4</button>
         <button class="table-btn" onclick="selectTable(5, this)">Table 5</button>
-        <button class="table-btn" onclick="selectTable(6, this)">Table 6</button>
     </div>
 
-    <div class="category-tabs" id="categoryTabs">
-        <button class="cat-tab active" onclick="selectCategory('mojitos', this)">🍹 Mojitos</button>
-        <button class="cat-tab" onclick="selectCategory('cold-coffee', this)">☕ Cold Coffee</button>
-        <button class="cat-tab" onclick="selectCategory('smoothies', this)">🥤 Smoothies</button>
-        <button class="cat-tab" onclick="selectCategory('fresh-juice', this)">🍊 Juice</button>
-        <button class="cat-tab" onclick="selectCategory('ice-creams', this)">🍨 Ice Cream</button>
-        <button class="cat-tab" onclick="selectCategory('barista', this)">☕ Barista</button>
-        <button class="cat-tab" onclick="selectCategory('tea', this)">🍵 Tea</button>
-        <button class="cat-tab" onclick="selectCategory('desserts', this)">🧁 Desserts</button>
-        <button class="cat-tab" onclick="selectCategory('soups', this)">🍜 Soups</button>
-        <button class="cat-tab" onclick="selectCategory('starters-veg', this)">🥗 Starters Veg</button>
-        <button class="cat-tab" onclick="selectCategory('starters-nonveg', this)">🍗 Starters Non-Veg</button>
-        <button class="cat-tab" onclick="selectCategory('quick-bites', this)">🍟 Quick Bites</button>
-        <button class="cat-tab" onclick="selectCategory('momos', this)">🥟 Momos</button>
-        <button class="cat-tab" onclick="selectCategory('rice-noodles', this)">🍚 Rice & Noodles</button>
-        <button class="cat-tab" onclick="selectCategory('burgers', this)">🍔 Burgers</button>
-        <button class="cat-tab" onclick="selectCategory('sandwiches', this)">🥪 Sandwiches</button>
-        <button class="cat-tab" onclick="selectCategory('pasta', this)">🍝 Pasta</button>
-        <button class="cat-tab" onclick="selectCategory('pizzas', this)">🍕 Pizzas</button>
+    <div class="category-selector">
+        <select class="category-dropdown" id="categoryDropdown" onchange="selectCategoryDropdown(this.value)">
+            <option value="mojitos">🍹 Mojitos</option>
+            <option value="cold-coffee">☕ Cold Coffee</option>
+            <option value="smoothies">🥤 Smoothies</option>
+            <option value="fresh-juice">🍊 Fresh Juice</option>
+            <option value="ice-creams">🍨 Ice Cream</option>
+            <option value="barista">☕ Barista</option>
+            <option value="tea">🍵 Tea</option>
+            <option value="desserts">🧁 Desserts</option>
+            <option value="soups">🍜 Soups</option>
+            <option value="starters-veg">🥗 Starters Veg</option>
+            <option value="starters-nonveg">🍗 Starters Non-Veg</option>
+            <option value="quick-bites">🍟 Quick Bites</option>
+            <option value="momos">🥟 Momos</option>
+            <option value="rice-noodles">🍚 Rice & Noodles</option>
+            <option value="burgers">🍔 Burgers</option>
+            <option value="sandwiches">🥪 Sandwiches</option>
+            <option value="pasta">🍝 Pasta</option>
+            <option value="pizzas">🍕 Pizzas</option>
+        </select>
     </div>
 
     <div class="menu-grid" id="menuGrid"></div>
@@ -343,11 +385,24 @@
         <div class="order-summary" id="orderSummary">
             <div class="empty-order">Tap items to add to order</div>
         </div>
-        <div class="order-total">
-            <span>Total</span>
-            <span id="orderTotal">₹0</span>
+        <div style="margin-bottom: 10px;">
+            <button onclick="toggleNotes()"
+                style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 13px; padding: 0; display: flex; align-items: center; gap: 4px;">
+                <span id="notesToggleIcon">➕</span> Special requests?
+            </button>
+            <input type="text" id="orderNotes" placeholder="No onion, extra spicy..."
+                style="display: none; width: 100%; padding: 10px 12px; margin-top: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px;">
         </div>
-        <button class="send-btn" id="sendBtn" onclick="sendOrder()" disabled>Send to Kitchen</button>
+        <div class="order-total" style="font-size: 20px; padding: 10px 0;">
+            <span>Total</span>
+            <span id="orderTotal" style="font-size: 24px; color: var(--accent);">₹0</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="send-btn" id="sendBtn" onclick="sendOrder()" disabled style="flex: 1;">🚀 Send to
+                Kitchen</button>
+            <button class="send-btn" onclick="requestBill()" style="flex: 1; background: #f59e0b;">🧾 Request
+                Bill</button>
+        </div>
     </div>
 
     <!-- Pizza Size Modal -->
@@ -438,7 +493,7 @@
             }
         };
 
-        let currentTable = 1;
+        let currentTable = 0;  // Default to Walk-in
         let currentCategory = 'mojitos';
         let order = [];
         let selectedPizza = null;
@@ -447,13 +502,31 @@
             currentTable = num;
             document.querySelectorAll('.table-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            document.getElementById('currentTable').textContent = `Table ${num}`;
+            document.getElementById('currentTable').textContent = num === 0 ? 'Walk-in ▼' : `Table ${num} ▼`;
+            // Hide table selector after selection
+            document.getElementById('tableSelector').style.display = 'none';
+        }
+
+        function toggleTableSelector() {
+            const selector = document.getElementById('tableSelector');
+            selector.style.display = selector.style.display === 'none' ? 'grid' : 'none';
+        }
+
+        function vibrate() {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(50);
+            }
         }
 
         function selectCategory(cat, btn) {
             currentCategory = cat;
             document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+            if (btn) btn.classList.add('active');
+            renderMenu();
+        }
+
+        function selectCategoryDropdown(cat) {
+            currentCategory = cat;
             renderMenu();
         }
 
@@ -480,6 +553,7 @@
         }
 
         function addItem(name, price) {
+            vibrate(); // Haptic feedback
             const existing = order.find(o => o.name === name);
             if (existing) {
                 existing.qty++;
@@ -535,11 +609,14 @@
                 const itemTotal = item.price * item.qty;
                 total += itemTotal;
                 html += `<div class="order-item">
-          <span>${item.name} × ${item.qty}</span>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-weight: 500;">${item.name}</span>
+            <span style="color: var(--accent); font-weight: 700;">Qty: ${item.qty}</span>
+          </div>
           <div class="qty-controls">
             <button class="qty-btn ${item.qty === 1 ? 'remove' : ''}" onclick="adjustQty(${idx}, -1)">${item.qty === 1 ? '✕' : '−'}</button>
             <button class="qty-btn" onclick="adjustQty(${idx}, 1)">+</button>
-            <span style="min-width: 50px; text-align: right;">₹${itemTotal}</span>
+            <span style="min-width: 60px; text-align: right; font-weight: 600;">₹${itemTotal}</span>
           </div>
         </div>`;
             });
@@ -554,9 +631,11 @@
             btn.textContent = 'Sending...';
 
             try {
+                const notes = document.getElementById('orderNotes').value.trim();
                 await db.collection('orders').add({
                     table: currentTable,
                     items: order.map(o => ({ name: o.name, price: o.price, qty: o.qty, category: o.category })),
+                    notes: notes || null,
                     status: 'pending',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -575,7 +654,43 @@
             }
 
             btn.disabled = false;
-            btn.textContent = 'Send to Kitchen';
+            btn.textContent = '🚀 Send to Kitchen';
+        }
+
+        async function requestBill() {
+            vibrate();
+            try {
+                await db.collection('billRequests').add({
+                    table: currentTable,
+                    status: 'pending',
+                    requestedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Show success toast
+                const toast = document.getElementById('successToast');
+                toast.textContent = '🧾 Bill Requested!';
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    toast.textContent = '✓ Order Sent!';
+                }, 2000);
+            } catch (error) {
+                console.error('Error requesting bill:', error);
+                alert('Failed to request bill. Please try again.');
+            }
+        }
+
+        function toggleNotes() {
+            const notesInput = document.getElementById('orderNotes');
+            const toggleIcon = document.getElementById('notesToggleIcon');
+            if (notesInput.style.display === 'none') {
+                notesInput.style.display = 'block';
+                toggleIcon.textContent = '➖';
+                notesInput.focus();
+            } else {
+                notesInput.style.display = 'none';
+                toggleIcon.textContent = '➕';
+            }
         }
 
         // Initialize
