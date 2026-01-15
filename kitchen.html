@@ -331,7 +331,8 @@
 <body>
     <div class="header">
         <div style="display: flex; align-items: center; gap: 20px;">
-            <a href="cafe.html" style="color: var(--text-secondary); text-decoration: none; font-size: 16px;">← Back</a>
+            <a href="index.html" style="color: var(--text-secondary); text-decoration: none; font-size: 16px;">←
+                Back</a>
             <h1>Kitchen Display</h1>
             <span
                 style="background: #22c55e; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; animation: livePulse 2s infinite;">●
@@ -368,10 +369,18 @@
             type="audio/wav">
     </audio>
 
-    <!-- Firebase Config (protected - not in Git) -->
-    <script src="firebase-config.js"></script>
+    <!-- Firebase Config -->
     <script>
-        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBnCmtp1s9PeEqOO3fW6n-mzrqCMFZk9to",
+            authDomain: "arena53-pos.firebaseapp.com",
+            databaseURL: "https://arena53-pos-default-rtdb.firebaseio.com",
+            projectId: "arena53-pos",
+            storageBucket: "arena53-pos.firebasestorage.app",
+            messagingSenderId: "291743234318",
+            appId: "1:291743234318:web:510b893fc6b8a64a703f5f",
+            measurementId: "G-CWK16HGZ0X"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
