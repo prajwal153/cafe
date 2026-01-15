@@ -9,7 +9,7 @@
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#10b981">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -400,8 +400,10 @@
         <div style="display: flex; gap: 10px;">
             <button class="send-btn" id="sendBtn" onclick="sendOrder()" disabled style="flex: 1;">🚀 Send to
                 Kitchen</button>
-            <button class="send-btn" onclick="requestBill()" style="flex: 1; background: #f59e0b;">🧾 Request
-                Bill</button>
+            <button class="send-btn" id="clearBtn" onclick="clearTable()"
+                style="flex: 0.6; background: var(--danger); display: none;">🗑️
+                Clear</button>
+            <button class="send-btn" onclick="requestBill()" style="flex: 0.8; background: #f59e0b;">🧾 Bill</button>
         </div>
     </div>
 
@@ -422,16 +424,10 @@
     <!-- Success Toast -->
     <div class="success-toast" id="successToast">✓ Order Sent!</div>
 
+    <!-- Firebase Config (protected - not in Git) -->
+    <script src="firebase-config.js"></script>
     <script>
-        // Firebase Config
-        const firebaseConfig = {
-            apiKey: "AIzaSyCmzxw8bNTQgj1xawz2qdnr-fHStYK_cHs",
-            authDomain: "cafe-87ecd.firebaseapp.com",
-            projectId: "cafe-87ecd",
-            storageBucket: "cafe-87ecd.firebasestorage.app",
-            messagingSenderId: "1066582065338",
-            appId: "1:1066582065338:web:1c20958000c6f1d0d30283"
-        };
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
@@ -495,16 +491,61 @@
 
         let currentTable = 0;  // Default to Walk-in
         let currentCategory = 'mojitos';
-        let order = [];
+        let tableOrders = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [] };  // Store orders per table
+        let order = [];  // Current table's order (reference)
         let selectedPizza = null;
 
         function selectTable(num, btn) {
+            // Save current order to current table before switching
+            tableOrders[currentTable] = [...order];
+
             currentTable = num;
+            // Load the order for the new table
+            order = tableOrders[currentTable] || [];
+            tableOrders[currentTable] = order;
+
             document.querySelectorAll('.table-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById('currentTable').textContent = num === 0 ? 'Walk-in ▼' : `Table ${num} ▼`;
             // Hide table selector after selection
             document.getElementById('tableSelector').style.display = 'none';
+
+            // Re-render order to show items for this table
+            renderOrder();
+        }
+
+        async function clearTable() {
+            if (order.length === 0) {
+                return;
+            }
+            if (confirm(`Clear all items for ${currentTable === 0 ? 'Walk-in' : 'Table ' + currentTable}?`)) {
+                // Clear local order
+                order = [];
+                tableOrders[currentTable] = [];
+                document.getElementById('orderNotes').value = '';
+                renderOrder();
+
+                // Also clear from Firebase (kitchen display)
+                try {
+                    const snapshot = await db.collection('orders')
+                        .where('table', '==', currentTable)
+                        .where('status', '==', 'pending')
+                        .get();
+
+                    const batch = db.batch();
+                    snapshot.docs.forEach(doc => {
+                        batch.update(doc.ref, {
+                            status: 'cleared',
+                            clearedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    });
+                    await batch.commit();
+
+                    console.log(`Cleared ${snapshot.docs.length} orders from kitchen for table ${currentTable}`);
+                } catch (error) {
+                    console.error('Error clearing orders from kitchen:', error);
+                }
+            }
         }
 
         function toggleTableSelector() {
@@ -554,11 +595,12 @@
 
         function addItem(name, price) {
             vibrate(); // Haptic feedback
-            const existing = order.find(o => o.name === name);
+            // Look for existing UNSENT item with same name
+            const existing = order.find(o => o.name === name && !o.sent);
             if (existing) {
                 existing.qty++;
             } else {
-                order.push({ name, price, qty: 1, category: currentCategory });
+                order.push({ name, price, qty: 1, category: currentCategory, sent: false });
             }
             renderOrder();
         }
@@ -595,38 +637,59 @@
         function renderOrder() {
             const container = document.getElementById('orderSummary');
             const btn = document.getElementById('sendBtn');
+            const clearBtn = document.getElementById('clearBtn');
 
             if (order.length === 0) {
                 container.innerHTML = '<div class="empty-order">Tap items to add to order</div>';
                 document.getElementById('orderTotal').textContent = '₹0';
                 btn.disabled = true;
+                clearBtn.style.display = 'none';
                 return;
             }
+
+            // Show clear button when there are items
+            clearBtn.style.display = 'block';
+
+            // Check if there are unsent items
+            const hasUnsentItems = order.some(o => !o.sent);
 
             let total = 0;
             let html = '';
             order.forEach((item, idx) => {
                 const itemTotal = item.price * item.qty;
                 total += itemTotal;
-                html += `<div class="order-item">
+                const sentStyle = item.sent ? 'opacity: 0.6;' : '';
+                const sentBadge = item.sent ? '<span style="background: #22c55e; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ SENT</span>' : '<span style="background: #f59e0b; color: #000; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">NEW</span>';
+                html += `<div class="order-item" style="${sentStyle}">
           <div style="display: flex; flex-direction: column; gap: 2px;">
-            <span style="font-weight: 500;">${item.name}</span>
+            <span style="font-weight: 500;">${item.name}${sentBadge}</span>
             <span style="color: var(--accent); font-weight: 700;">Qty: ${item.qty}</span>
           </div>
           <div class="qty-controls">
-            <button class="qty-btn ${item.qty === 1 ? 'remove' : ''}" onclick="adjustQty(${idx}, -1)">${item.qty === 1 ? '✕' : '−'}</button>
-            <button class="qty-btn" onclick="adjustQty(${idx}, 1)">+</button>
+            <button class="qty-btn ${item.qty === 1 ? 'remove' : ''}" onclick="adjustQty(${idx}, -1)" ${item.sent ? 'disabled style="opacity:0.5"' : ''}>${item.qty === 1 ? '✕' : '−'}</button>
+            <button class="qty-btn" onclick="adjustQty(${idx}, 1)" ${item.sent ? 'disabled style="opacity:0.5"' : ''}>+</button>
             <span style="min-width: 60px; text-align: right; font-weight: 600;">₹${itemTotal}</span>
           </div>
         </div>`;
             });
             container.innerHTML = html;
             document.getElementById('orderTotal').textContent = `₹${total}`;
-            btn.disabled = false;
+
+            // Only enable send button if there are unsent items
+            btn.disabled = !hasUnsentItems;
         }
 
         async function sendOrder() {
             const btn = document.getElementById('sendBtn');
+
+            // Get only unsent items
+            const unsentItems = order.filter(o => !o.sent);
+
+            if (unsentItems.length === 0) {
+                alert('No new items to send!');
+                return;
+            }
+
             btn.disabled = true;
             btn.textContent = 'Sending...';
 
@@ -634,20 +697,30 @@
                 const notes = document.getElementById('orderNotes').value.trim();
                 await db.collection('orders').add({
                     table: currentTable,
-                    items: order.map(o => ({ name: o.name, price: o.price, qty: o.qty, category: o.category })),
+                    items: unsentItems.map(o => ({ name: o.name, price: o.price, qty: o.qty, category: o.category })),
                     notes: notes || null,
                     status: 'pending',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+
+                // Mark items as sent
+                order.forEach(o => {
+                    if (!o.sent) {
+                        o.sent = true;
+                    }
+                });
+
+                // Clear notes after sending
+                document.getElementById('orderNotes').value = '';
+
+                // Re-render to show sent status
+                renderOrder();
 
                 // Show success
                 const toast = document.getElementById('successToast');
                 toast.classList.add('show');
                 setTimeout(() => toast.classList.remove('show'), 2000);
 
-                // Reset order
-                order = [];
-                renderOrder();
             } catch (error) {
                 console.error('Error sending order:', error);
                 alert('Failed to send order. Please try again.');
