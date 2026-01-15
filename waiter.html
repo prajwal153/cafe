@@ -424,10 +424,18 @@
     <!-- Success Toast -->
     <div class="success-toast" id="successToast">✓ Order Sent!</div>
 
-    <!-- Firebase Config (protected - not in Git) -->
-    <script src="firebase-config.js"></script>
+    <!-- Firebase Config -->
     <script>
-        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBnCmtp1s9PeEqOO3fW6n-mzrqCMFZk9to",
+            authDomain: "arena53-pos.firebaseapp.com",
+            databaseURL: "https://arena53-pos-default-rtdb.firebaseio.com",
+            projectId: "arena53-pos",
+            storageBucket: "arena53-pos.firebasestorage.app",
+            messagingSenderId: "291743234318",
+            appId: "1:291743234318:web:510b893fc6b8a64a703f5f",
+            measurementId: "G-CWK16HGZ0X"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
