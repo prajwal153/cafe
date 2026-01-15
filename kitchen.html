@@ -9,7 +9,7 @@
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#10b981">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -221,6 +221,49 @@
             margin-right: 10px;
         }
 
+        /* Highlight for new/recent items */
+        .order-item.new-item {
+            background: rgba(245, 158, 11, 0.2);
+            border-left: 3px solid #f59e0b;
+            padding-left: 12px;
+            margin-left: -12px;
+            animation: newItemPulse 2s ease-in-out;
+        }
+
+        .order-item.new-item .item-qty {
+            background: #f59e0b;
+        }
+
+        .new-badge {
+            background: #f59e0b;
+            color: #000;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+            font-weight: 700;
+        }
+
+        @keyframes newItemPulse {
+
+            0%,
+            100% {
+                background: rgba(245, 158, 11, 0.2);
+            }
+
+            50% {
+                background: rgba(245, 158, 11, 0.4);
+            }
+        }
+
+        .order-batch-divider {
+            border-top: 1px dashed var(--border);
+            margin: 8px 0;
+            padding-top: 8px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
         .order-footer {
             padding: 16px 20px;
             border-top: 1px solid var(--border);
@@ -325,16 +368,10 @@
             type="audio/wav">
     </audio>
 
+    <!-- Firebase Config (protected - not in Git) -->
+    <script src="firebase-config.js"></script>
     <script>
-        // Firebase Config
-        const firebaseConfig = {
-            apiKey: "AIzaSyCmzxw8bNTQgj1xawz2qdnr-fHStYK_cHs",
-            authDomain: "cafe-87ecd.firebaseapp.com",
-            projectId: "cafe-87ecd",
-            storageBucket: "cafe-87ecd.firebasestorage.app",
-            messagingSenderId: "1066582065338",
-            appId: "1:1066582065338:web:1c20958000c6f1d0d30283"
-        };
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
@@ -405,39 +442,75 @@
                 return;
             }
 
-            let html = '';
-            orders.forEach((order, index) => {
-                const time = getTimeAgo(order.createdAt);
-                const ageMs = order.createdAt ? (Date.now() - order.createdAt.toDate().getTime()) : 0;
-                const isNew = ageMs < 60000; // 1 min
-                const ageClass = ageMs < 300000 ? 'age-ok' : (ageMs < 600000 ? 'age-warning' : 'age-urgent');
-                const itemCount = order.items.reduce((sum, item) => sum + item.qty, 0);
-                const orderNum = order.id.slice(-4).toUpperCase();
+            // Group orders by table
+            const tableGroups = {};
+            orders.forEach(order => {
+                const table = order.table;
+                if (!tableGroups[table]) {
+                    tableGroups[table] = [];
+                }
+                tableGroups[table].push(order);
+            });
 
-                html += `<div class="order-card ${isNew ? 'new' : ''} ${ageClass}">
+            let html = '';
+
+            // Render each table's grouped orders
+            Object.keys(tableGroups).sort((a, b) => a - b).forEach(table => {
+                const tableOrders = tableGroups[table];
+
+                // Get oldest order time for the table card
+                const oldestOrder = tableOrders[0];
+                const oldestAgeMs = oldestOrder.createdAt ? (Date.now() - oldestOrder.createdAt.toDate().getTime()) : 0;
+                const ageClass = oldestAgeMs < 300000 ? 'age-ok' : (oldestAgeMs < 600000 ? 'age-warning' : 'age-urgent');
+
+                // Total items for this table
+                const totalItems = tableOrders.reduce((sum, order) =>
+                    sum + order.items.reduce((s, item) => s + item.qty, 0), 0);
+
+                // Collect all order IDs for this table
+                const orderIds = tableOrders.map(o => o.id);
+
+                html += `<div class="order-card ${ageClass}">
           <div class="order-header">
             <div>
-              <div class="table-num">Table ${order.table}</div>
-              <div class="order-number">#${orderNum}</div>
+              <div class="table-num">${table === '0' || table === 0 ? '🚶 Walk-in' : 'Table ' + table}</div>
+              <div class="order-number">${tableOrders.length} order${tableOrders.length > 1 ? 's' : ''}</div>
             </div>
             <div style="text-align: right;">
-              <span class="item-count-badge">${itemCount} items</span>
-              <div class="order-time ${ageMs > 600000 ? 'urgent' : ''}" style="margin-top: 4px;">${time}</div>
+              <span class="item-count-badge">${totalItems} items</span>
+              <div class="order-time ${oldestAgeMs > 600000 ? 'urgent' : ''}" style="margin-top: 4px;">${getTimeAgo(oldestOrder.createdAt)}</div>
             </div>
           </div>
-          ${order.notes ? `<div class="notes-display">📝 ${order.notes}</div>` : ''}
-          <div class="order-items">
-            ${order.items.map(item => `
-              <div class="order-item">
-                <span><span class="item-qty">${item.qty}</span>${item.name}</span>
-              </div>
-            `).join('')}
-          </div>
+          <div class="order-items">`;
+
+                // Render each order batch for this table
+                tableOrders.forEach((order, batchIndex) => {
+                    const ageMs = order.createdAt ? (Date.now() - order.createdAt.toDate().getTime()) : 0;
+                    const isNewBatch = ageMs < 120000; // 2 minutes = new
+
+                    if (batchIndex > 0) {
+                        html += `<div class="order-batch-divider">Order ${batchIndex + 1} • ${getTimeAgo(order.createdAt)}</div>`;
+                    }
+
+                    order.items.forEach(item => {
+                        html += `
+              <div class="order-item ${isNewBatch ? 'new-item' : ''}">
+                <span><span class="item-qty">${item.qty}</span>${item.name}${isNewBatch ? '<span class="new-badge">NEW</span>' : ''}</span>
+              </div>`;
+                    });
+
+                    if (order.notes) {
+                        html += `<div class="notes-display" style="margin: 5px 0;">📝 ${order.notes}</div>`;
+                    }
+                });
+
+                html += `</div>
           <div class="order-footer">
-            <button class="complete-btn" onclick="completeOrder('${order.id}')">✓ Mark Complete</button>
+            <button class="complete-btn" onclick="completeTableOrders('${orderIds.join(',')}')">✓ Complete Table ${table === '0' || table === 0 ? '(Walk-in)' : table}</button>
           </div>
         </div>`;
             });
+
             grid.innerHTML = html;
         }
 
@@ -462,6 +535,24 @@
             } catch (error) {
                 console.error('Error completing order:', error);
                 alert('Failed to complete order. Please try again.');
+            }
+        }
+
+        // Complete all orders for a table
+        async function completeTableOrders(orderIdsStr) {
+            const orderIds = orderIdsStr.split(',');
+            try {
+                for (const orderId of orderIds) {
+                    await db.collection('orders').doc(orderId).update({
+                        status: 'completed',
+                        completedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    completedToday++;
+                }
+                updateStats();
+            } catch (error) {
+                console.error('Error completing table orders:', error);
+                alert('Failed to complete orders. Please try again.');
             }
         }
 
