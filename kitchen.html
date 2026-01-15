@@ -128,7 +128,6 @@
             }
         }
 
-        /* Color-coded order cards by age */
         .order-card.age-ok {
             border-color: #22c55e;
         }
@@ -221,7 +220,6 @@
             margin-right: 10px;
         }
 
-        /* Highlight for new/recent items */
         .order-item.new-item {
             background: rgba(245, 158, 11, 0.2);
             border-left: 3px solid #f59e0b;
@@ -311,7 +309,6 @@
             color: var(--text-secondary);
         }
 
-        /* Audio notification */
         .audio-enabled {
             padding: 8px 16px;
             background: var(--accent);
@@ -362,14 +359,12 @@
         </div>
     </div>
 
-    <!-- Notification sound -->
     <audio id="notificationSound" preload="auto">
         <source
             src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleBoAMNDg9Nt4Rwo"
             type="audio/wav">
     </audio>
 
-    <!-- Firebase Config -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBnCmtp1s9PeEqOO3fW6n-mzrqCMFZk9to",
@@ -389,137 +384,88 @@
         let audioEnabled = true;
         let lastOrderCount = 0;
 
-        // Real-time listener for pending orders (no orderBy to avoid index requirement)
-        db.collection('orders')
-            .where('status', '==', 'pending')
-            .onSnapshot((snapshot) => {
-                const newOrders = [];
-                snapshot.forEach(doc => {
-                    newOrders.push({ id: doc.id, ...doc.data() });
-                });
-
-                // Sort by createdAt in JavaScript (avoids Firestore index requirement)
-                newOrders.sort((a, b) => {
-                    const timeA = a.createdAt?.toDate?.() || new Date(0);
-                    const timeB = b.createdAt?.toDate?.() || new Date(0);
-                    return timeA - timeB;
-                });
-
-                // Play sound if new orders arrived
-                if (newOrders.length > lastOrderCount && audioEnabled) {
-                    playNotification();
-                }
-                lastOrderCount = newOrders.length;
-
-                orders = newOrders;
-                renderOrders();
-                updateStats();
-            }, (error) => {
-                console.error('Error listening to orders:', error);
+        db.collection('orders').where('status', '==', 'pending').onSnapshot((snapshot) => {
+            const newOrders = [];
+            snapshot.forEach(doc => { newOrders.push({ id: doc.id, ...doc.data() }); });
+            newOrders.sort((a, b) => {
+                const timeA = a.createdAt?.toDate?.() || new Date(0);
+                const timeB = b.createdAt?.toDate?.() || new Date(0);
+                return timeA - timeB;
             });
+            if (newOrders.length > lastOrderCount && audioEnabled) { playNotification(); }
+            lastOrderCount = newOrders.length;
+            orders = newOrders;
+            renderOrders();
+            updateStats();
+        }, (error) => { console.error('Error listening to orders:', error); });
 
-        // Get completed count for today (simplified query, filter in JS)
         async function getCompletedCount() {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
+            const today = new Date(); today.setHours(0, 0, 0, 0);
             try {
-                const snapshot = await db.collection('orders')
-                    .where('status', '==', 'completed')
-                    .get();
-                // Filter by today's date in JavaScript
+                const snapshot = await db.collection('orders').where('status', '==', 'completed').get();
                 completedToday = snapshot.docs.filter(doc => {
                     const data = doc.data();
                     if (!data.completedAt) return false;
-                    const completedDate = data.completedAt.toDate();
-                    return completedDate >= today;
+                    return data.completedAt.toDate() >= today;
                 }).length;
                 updateStats();
-            } catch (error) {
-                console.error('Error getting completed count:', error);
-            }
+            } catch (error) { console.error('Error getting completed count:', error); }
         }
 
         function renderOrders() {
             const grid = document.getElementById('ordersGrid');
-
             if (orders.length === 0) {
-                grid.innerHTML = `<div class="no-orders">
-          <h2>✨ All Caught Up!</h2>
-          <p>No pending orders at the moment</p>
-        </div>`;
+                grid.innerHTML = `<div class="no-orders"><h2>✨ All Caught Up!</h2><p>No pending orders at the moment</p></div>`;
                 return;
             }
 
-            // Group orders by table
             const tableGroups = {};
             orders.forEach(order => {
                 const table = order.table;
-                if (!tableGroups[table]) {
-                    tableGroups[table] = [];
-                }
+                if (!tableGroups[table]) tableGroups[table] = [];
                 tableGroups[table].push(order);
             });
 
             let html = '';
-
-            // Render each table's grouped orders
             Object.keys(tableGroups).sort((a, b) => a - b).forEach(table => {
                 const tableOrders = tableGroups[table];
-
-                // Get oldest order time for the table card
                 const oldestOrder = tableOrders[0];
                 const oldestAgeMs = oldestOrder.createdAt ? (Date.now() - oldestOrder.createdAt.toDate().getTime()) : 0;
                 const ageClass = oldestAgeMs < 300000 ? 'age-ok' : (oldestAgeMs < 600000 ? 'age-warning' : 'age-urgent');
-
-                // Total items for this table
-                const totalItems = tableOrders.reduce((sum, order) =>
-                    sum + order.items.reduce((s, item) => s + item.qty, 0), 0);
-
-                // Collect all order IDs for this table
+                const totalItems = tableOrders.reduce((sum, order) => sum + order.items.reduce((s, item) => s + item.qty, 0), 0);
                 const orderIds = tableOrders.map(o => o.id);
 
                 html += `<div class="order-card ${ageClass}">
-          <div class="order-header">
-            <div>
-              <div class="table-num">${table === '0' || table === 0 ? '🚶 Walk-in' : 'Table ' + table}</div>
-              <div class="order-number">${tableOrders.length} order${tableOrders.length > 1 ? 's' : ''}</div>
-            </div>
-            <div style="text-align: right;">
-              <span class="item-count-badge">${totalItems} items</span>
-              <div class="order-time ${oldestAgeMs > 600000 ? 'urgent' : ''}" style="margin-top: 4px;">${getTimeAgo(oldestOrder.createdAt)}</div>
-            </div>
-          </div>
-          <div class="order-items">`;
+                  <div class="order-header">
+                    <div>
+                      <div class="table-num">${table === '0' || table === 0 ? '🚶 Walk-in' : 'Table ' + table}</div>
+                      <div class="order-number">${tableOrders.length} order${tableOrders.length > 1 ? 's' : ''}</div>
+                    </div>
+                    <div style="text-align: right;">
+                      <span class="item-count-badge">${totalItems} items</span>
+                      <div class="order-time ${oldestAgeMs > 600000 ? 'urgent' : ''}" style="margin-top: 4px;">${getTimeAgo(oldestOrder.createdAt)}</div>
+                    </div>
+                  </div>
+                  <div class="order-items">`;
 
-                // Render each order batch for this table
                 tableOrders.forEach((order, batchIndex) => {
                     const ageMs = order.createdAt ? (Date.now() - order.createdAt.toDate().getTime()) : 0;
-                    const isNewBatch = ageMs < 120000; // 2 minutes = new
-
-                    if (batchIndex > 0) {
-                        html += `<div class="order-batch-divider">Order ${batchIndex + 1} • ${getTimeAgo(order.createdAt)}</div>`;
-                    }
-
+                    const isNewBatch = ageMs < 120000;
+                    if (batchIndex > 0) html += `<div class="order-batch-divider">Order ${batchIndex + 1} • ${getTimeAgo(order.createdAt)}</div>`;
                     order.items.forEach(item => {
-                        html += `
-              <div class="order-item ${isNewBatch ? 'new-item' : ''}">
-                <span><span class="item-qty">${item.qty}</span>${item.name}${isNewBatch ? '<span class="new-badge">NEW</span>' : ''}</span>
-              </div>`;
+                        html += `<div class="order-item ${isNewBatch ? 'new-item' : ''}">
+                          <span><span class="item-qty">${item.qty}</span>${item.name}${isNewBatch ? '<span class="new-badge">NEW</span>' : ''}</span>
+                        </div>`;
                     });
-
-                    if (order.notes) {
-                        html += `<div class="notes-display" style="margin: 5px 0;">📝 ${order.notes}</div>`;
-                    }
+                    if (order.notes) html += `<div class="notes-display" style="margin: 5px 0;">📝 ${order.notes}</div>`;
                 });
 
                 html += `</div>
-          <div class="order-footer">
-            <button class="complete-btn" onclick="completeTableOrders('${orderIds.join(',')}')">✓ Complete Table ${table === '0' || table === 0 ? '(Walk-in)' : table}</button>
-          </div>
-        </div>`;
+                  <div class="order-footer">
+                    <button class="complete-btn" onclick="completeTableOrders('${orderIds.join(',')}')">✓ Complete Table ${table === '0' || table === 0 ? '(Walk-in)' : table}</button>
+                  </div>
+                </div>`;
             });
-
             grid.innerHTML = html;
         }
 
@@ -535,34 +481,21 @@
 
         async function completeOrder(orderId) {
             try {
-                await db.collection('orders').doc(orderId).update({
-                    status: 'completed',
-                    completedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                await db.collection('orders').doc(orderId).update({ status: 'completed', completedAt: firebase.firestore.FieldValue.serverTimestamp() });
                 completedToday++;
                 updateStats();
-            } catch (error) {
-                console.error('Error completing order:', error);
-                alert('Failed to complete order. Please try again.');
-            }
+            } catch (error) { console.error('Error completing order:', error); alert('Failed to complete order.'); }
         }
 
-        // Complete all orders for a table
         async function completeTableOrders(orderIdsStr) {
             const orderIds = orderIdsStr.split(',');
             try {
                 for (const orderId of orderIds) {
-                    await db.collection('orders').doc(orderId).update({
-                        status: 'completed',
-                        completedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                    await db.collection('orders').doc(orderId).update({ status: 'completed', completedAt: firebase.firestore.FieldValue.serverTimestamp() });
                     completedToday++;
                 }
                 updateStats();
-            } catch (error) {
-                console.error('Error completing table orders:', error);
-                alert('Failed to complete orders. Please try again.');
-            }
+            } catch (error) { console.error('Error completing table orders:', error); alert('Failed to complete orders.'); }
         }
 
         function updateStats() {
@@ -571,8 +504,6 @@
         }
 
         function playNotification() {
-            const sound = document.getElementById('notificationSound');
-            // Create a simple beep using Web Audio API
             try {
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioContext.createOscillator();
@@ -585,43 +516,27 @@
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
                 oscillator.start(audioContext.currentTime);
                 oscillator.stop(audioContext.currentTime + 0.5);
-            } catch (e) {
-                console.log('Audio not available');
-            }
+            } catch (e) { console.log('Audio not available'); }
         }
 
         function toggleAudio() {
             audioEnabled = !audioEnabled;
             const btn = document.getElementById('audioBtn');
-            if (audioEnabled) {
-                btn.textContent = '🔔 Sound';
-                btn.classList.remove('muted');
-            } else {
-                btn.textContent = '🔕 Muted';
-                btn.classList.add('muted');
-            }
+            btn.textContent = audioEnabled ? '🔔 Sound' : '🔕 Muted';
+            btn.classList.toggle('muted', !audioEnabled);
         }
 
         function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(e => console.log(e));
-            } else {
-                document.exitFullscreen();
-            }
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e => console.log(e));
+            else document.exitFullscreen();
         }
 
-        // Update clock
         function updateClock() {
-            const now = new Date();
-            document.getElementById('clock').textContent = now.toLocaleTimeString('en-IN', { hour12: false });
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-IN', { hour12: false });
         }
         setInterval(updateClock, 1000);
         updateClock();
-
-        // Refresh time displays every 30 seconds
         setInterval(renderOrders, 30000);
-
-        // Get initial completed count
         getCompletedCount();
     </script>
 </body>
