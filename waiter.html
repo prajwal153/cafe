@@ -197,6 +197,71 @@
             border-top: 1px solid var(--border);
             padding: 16px;
             z-index: 100;
+            transition: transform 0.3s ease;
+        }
+
+        .order-panel.collapsed .order-panel-content {
+            display: none;
+        }
+
+        .order-panel.collapsed {
+            padding-bottom: 12px;
+        }
+
+        .order-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .order-panel.collapsed .order-panel-header {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .order-panel-header .toggle-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .order-panel-header .toggle-btn {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        .order-panel.collapsed .toggle-btn {
+            transform: rotate(180deg);
+        }
+
+        .order-panel-header .items-count {
+            background: var(--accent);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .order-panel-header .header-total {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
         }
 
         .order-summary {
@@ -381,29 +446,39 @@
 
     <div class="menu-grid" id="menuGrid"></div>
 
-    <div class="order-panel">
-        <div class="order-summary" id="orderSummary">
-            <div class="empty-order">Tap items to add to order</div>
+    <div class="order-panel" id="orderPanel">
+        <div class="order-panel-header" onclick="toggleOrderPanel()">
+            <div class="toggle-info">
+                <button class="toggle-btn">▼</button>
+                <span class="items-count" id="itemsCount">0 items</span>
+            </div>
+            <span class="header-total" id="headerTotal">₹0</span>
         </div>
-        <div style="margin-bottom: 10px;">
-            <button onclick="toggleNotes()"
-                style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 13px; padding: 0; display: flex; align-items: center; gap: 4px;">
-                <span id="notesToggleIcon">➕</span> Special requests?
-            </button>
-            <input type="text" id="orderNotes" placeholder="No onion, extra spicy..."
-                style="display: none; width: 100%; padding: 10px 12px; margin-top: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px;">
-        </div>
-        <div class="order-total" style="font-size: 20px; padding: 10px 0;">
-            <span>Total</span>
-            <span id="orderTotal" style="font-size: 24px; color: var(--accent);">₹0</span>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <button class="send-btn" id="sendBtn" onclick="sendOrder()" disabled style="flex: 1;">🚀 Send to
-                Kitchen</button>
-            <button class="send-btn" id="clearBtn" onclick="clearTable()"
-                style="flex: 0.6; background: var(--danger); display: none;">🗑️
-                Clear</button>
-            <button class="send-btn" onclick="requestBill()" style="flex: 0.8; background: #f59e0b;">🧾 Bill</button>
+        <div class="order-panel-content">
+            <div class="order-summary" id="orderSummary">
+                <div class="empty-order">Tap items to add to order</div>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <button onclick="toggleNotes()"
+                    style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 13px; padding: 0; display: flex; align-items: center; gap: 4px;">
+                    <span id="notesToggleIcon">➕</span> Special requests?
+                </button>
+                <input type="text" id="orderNotes" placeholder="No onion, extra spicy..."
+                    style="display: none; width: 100%; padding: 10px 12px; margin-top: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px;">
+            </div>
+            <div class="order-total" style="font-size: 20px; padding: 10px 0;">
+                <span>Total</span>
+                <span id="orderTotal" style="font-size: 24px; color: var(--accent);">₹0</span>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="send-btn" id="sendBtn" onclick="sendOrder()" disabled style="flex: 1;">🚀 Send to
+                    Kitchen</button>
+                <button class="send-btn" id="clearBtn" onclick="clearTable()"
+                    style="flex: 0.6; background: var(--danger); display: none;">🗑️
+                    Clear</button>
+                <button class="send-btn" onclick="requestBill()" style="flex: 0.8; background: #f59e0b;">🧾
+                    Bill</button>
+            </div>
         </div>
     </div>
 
@@ -685,6 +760,9 @@
 
             // Only enable send button if there are unsent items
             btn.disabled = !hasUnsentItems;
+
+            // Update header info for collapsed state
+            updateHeaderInfo();
         }
 
         async function sendOrder() {
@@ -772,6 +850,18 @@
                 notesInput.style.display = 'none';
                 toggleIcon.textContent = '➕';
             }
+        }
+
+        function toggleOrderPanel() {
+            const panel = document.getElementById('orderPanel');
+            panel.classList.toggle('collapsed');
+        }
+
+        function updateHeaderInfo() {
+            const totalItems = order.reduce((sum, item) => sum + item.qty, 0);
+            const totalPrice = order.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            document.getElementById('itemsCount').textContent = totalItems === 1 ? '1 item' : `${totalItems} items`;
+            document.getElementById('headerTotal').textContent = `₹${totalPrice}`;
         }
 
         // Initialize
